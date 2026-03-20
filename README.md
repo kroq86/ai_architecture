@@ -2,6 +2,32 @@
 
 Python application for Telegram-based interaction with an OpenAI-backed coordinator.
 
+## Project Goal
+
+The main goal of this project is not just to run the app, but to make the implementation conform to the architecture described in `docs/topics/`.
+
+The source of truth for that work is:
+
+- `tests/TOPICS_TEST_MATRIX.md`
+
+This matrix defines:
+
+- which topic requirements exist
+- which ones are already implemented
+- which ones are only partial
+- which ones are still missing
+- what must be implemented to turn red tests green
+
+So the actual project workflow is:
+
+1. read the topic architecture in `docs/topics/`
+2. read `tests/TOPICS_TEST_MATRIX.md`
+3. run the test suite
+4. implement missing architecture pieces
+5. turn expected failures and gaps into green tests
+
+The purpose of the codebase is to close that matrix through tests and implementation.
+
 ## Project Structure
 
 ```text
@@ -12,6 +38,8 @@ src/telegram_ai_app/
   llm/
   observability/
   utils/
+tests/
+docs/topics/
 ```
 
 ## Requirements
