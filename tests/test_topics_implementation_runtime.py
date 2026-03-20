@@ -218,6 +218,46 @@ class TopicsImplementationRuntimeTests(unittest.TestCase):
         async_create.assert_awaited_once()
         self.assertEqual(result, "short answer")
 
+    @unittest.expectedFailure
+    def test_top_imp_018_tool_gateway_exists_as_dedicated_layer(self):
+        import importlib
+
+        module = importlib.import_module("telegram_ai_app.tools.registry")
+        self.assertTrue(hasattr(module, "ToolRegistry"))
+
+    @unittest.expectedFailure
+    def test_top_imp_019_validation_layer_exists(self):
+        import importlib
+
+        module = importlib.import_module("telegram_ai_app.validation.pipeline")
+        self.assertTrue(hasattr(module, "ValidationPipeline"))
+
+    @unittest.expectedFailure
+    def test_top_imp_025_secrets_are_redacted_in_logging(self):
+        from telegram_ai_app.observability import logging as logging_module
+
+        self.assertTrue(hasattr(logging_module, "redact_secret"))
+
+    @unittest.expectedFailure
+    def test_top_imp_027_metrics_and_tracing_layer_exists(self):
+        import importlib
+
+        metrics = importlib.import_module("telegram_ai_app.observability.metrics")
+        tracing = importlib.import_module("telegram_ai_app.observability.tracing")
+        self.assertTrue(hasattr(metrics, "record_metric"))
+        self.assertTrue(hasattr(tracing, "start_trace"))
+
+    @unittest.expectedFailure
+    def test_top_imp_028_duplicate_update_dedupe_exists(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store = SessionStore(str(Path(tmp) / "app.db"))
+        self.assertTrue(hasattr(store, "has_processed_update"))
+        self.assertTrue(hasattr(store, "mark_update_processed"))
+
+    @unittest.expectedFailure
+    def test_top_imp_029_safe_user_error_fallback_exists(self):
+        self.assertTrue(hasattr(Coordinator, "build_safe_fallback_message"))
+
     def test_top_imp_011_polling_runner_deletes_webhook_and_processes_updates(self):
         config = self._make_config()
         telegram = SimpleNamespace(
