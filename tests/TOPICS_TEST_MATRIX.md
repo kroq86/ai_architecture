@@ -97,9 +97,179 @@ Status meanings:
 3. `Tests/test_topics_tooling_gaps.py`
    Encodes current red tests for missing tool gateway and routing architecture.
 
+## What Must Be Implemented To Turn Red Tests Green
+
+### Implementation / Runtime
+
+- `TOP-IMP-008`
+  Do this:
+  complete production webhook flow: webhook registration, public URL handling, startup validation, and update delivery coverage beyond local startup.
+
+- `TOP-IMP-011`
+  Do this:
+  add explicit command handling for `/start`, `/help`, `/reset` instead of routing them through the generic LLM path.
+
+- `TOP-IMP-014`
+  Do this:
+  introduce explicit coordinator intent/routing decisions instead of the current single-pass request -> prompt -> model -> reply flow.
+
+- `TOP-IMP-015`
+  Do this:
+  implement a real tool loop: tool registry, tool selection, tool execution, tool result reinjection, and stop/continue control.
+
+- `TOP-IMP-017`
+  Do this:
+  add bounded retry logic in the OpenAI client for transient errors, timeouts, and rate limits.
+
+- `TOP-IMP-018`
+  Do this:
+  create a dedicated `tools/` layer with registry, executor, contracts, and error normalization.
+
+- `TOP-IMP-019`
+  Do this:
+  create a dedicated validation layer for input validation, semantic checks, and output contract enforcement.
+
+- `TOP-IMP-021`
+  Do this:
+  add Telegram-safe escaping for Markdown/HTML rendering, not only chunking.
+
+- `TOP-IMP-024`
+  Do this:
+  extend fail-fast coverage to all required startup/runtime conditions, not just env presence.
+
+- `TOP-IMP-025`
+  Do this:
+  add secret redaction in logs, exceptions, and diagnostic output.
+
+- `TOP-IMP-027`
+  Do this:
+  add metrics/tracing hooks and explicit observability modules beyond plain logging.
+
+- `TOP-IMP-028`
+  Do this:
+  add dedupe/idempotency for Telegram updates using stored update IDs or a short-lived dedupe store.
+
+- `TOP-IMP-029`
+  Do this:
+  add safe user fallback messages for provider/tool/runtime failures.
+
+### Tooling / MCP
+
+- `TOP-TOOL-001`
+  Do this:
+  add tool descriptions that include purpose, inputs, boundaries, and when not to use the tool.
+
+- `TOP-TOOL-002`
+  Do this:
+  add routing logic or tool metadata fixtures that can be tested against misrouting scenarios.
+
+- `TOP-TOOL-003`
+  Do this:
+  create a tool result contract that separates valid empty result from execution failure.
+
+- `TOP-TOOL-004`
+  Do this:
+  create typed tool error classes or structured error payloads with retryability flags.
+
+- `TOP-TOOL-005`
+  Do this:
+  define scoped toolsets per role/agent instead of a flat global tool universe.
+
+- `TOP-TOOL-006`
+  Do this:
+  add explicit tool choice modes such as optional, any-required, and forced specific tool.
+
+- `TOP-TOOL-007`
+  Do this:
+  add pre-execution hooks that can deny, mutate, or enforce tool calls.
+
+- `TOP-TOOL-008`
+  Do this:
+  add post-execution hooks that normalize tool output before the coordinator consumes it.
+
+- `TOP-TOOL-009`
+  Do this:
+  provide shared tool config rendering/validation that proves secrets are never embedded.
+
+- `TOP-TOOL-010`
+  Do this:
+  implement an exploration/discovery workflow that encodes incremental search/read/edit behavior.
+
+### Prompt / Structured Output
+
+- `TOP-PROMPT-001`
+  Do this:
+  make prompt criteria more explicit and testable, not only general system wording.
+
+- `TOP-PROMPT-002`
+  Do this:
+  add a machine-readable structured output contract or schema path for downstream logic.
+
+- `TOP-PROMPT-003`
+  Do this:
+  model nullable/optional fields explicitly to avoid fabrication pressure.
+
+- `TOP-PROMPT-004`
+  Do this:
+  implement validation-retry behavior for fixable semantic errors.
+
+- `TOP-PROMPT-005`
+  Do this:
+  add few-shot/example injection capability in prompt building.
+
+- `TOP-PROMPT-006`
+  Do this:
+  add explicit sync vs batch workflow routing if batch processing becomes part of the app.
+
+- `TOP-PROMPT-007`
+  Do this:
+  add a separate independent-review invocation path rather than same-session self-review.
+
+### Context / Reliability
+
+- `TOP-CONTEXT-001`
+  Do this:
+  split persistent facts from plain message history instead of storing only chat turns.
+
+- `TOP-CONTEXT-002`
+  Do this:
+  add APIs/storage for critical facts like IDs, dates, statuses, and constraints.
+
+- `TOP-CONTEXT-003`
+  Do this:
+  implement explicit escalation rules based on policy and progress, not sentiment.
+
+- `TOP-CONTEXT-004`
+  Do this:
+  implement structured error payloads with partial results and suggested next actions.
+
+- `TOP-CONTEXT-005`
+  Do this:
+  encode error semantics so access failure and valid empty result are distinct states.
+
+- `TOP-CONTEXT-006`
+  Do this:
+  add scratchpad and manifest persistence for long-running or multi-phase work.
+
+- `TOP-CONTEXT-007`
+  Do this:
+  add segmented metrics rather than aggregate-only runtime counters.
+
+- `TOP-CONTEXT-008`
+  Do this:
+  introduce configurable confidence thresholds and calibration-aware routing.
+
+- `TOP-CONTEXT-009`
+  Do this:
+  add provenance fields and preservation through synthesis.
+
+- `TOP-CONTEXT-010`
+  Do this:
+  preserve conflicting sources explicitly instead of collapsing them to one answer.
+
 ## Notes
 
 - This is the first step only: matrix before broad test implementation.
 - The matrix is intentionally scoped to `Docs/topics/`.
-- Existing lowercase `tests/` are not yet migrated into `Tests/`.
+- On this filesystem, `tests/` and `Tests/` resolve to the same physical directory; git tracks the lowercase path `tests/`.
 - Later steps should map each matrix ID to one concrete test file and test name.
