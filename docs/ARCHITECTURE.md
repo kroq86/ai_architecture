@@ -22,6 +22,61 @@
 5. Поддерживать human-in-the-loop там, где автоматизация недостаточно надежна.
 6. Оставаться переносимой между провайдерами моделей, инфраструктурой и прикладными каналами.
 
+## 2.1 Glossary
+
+- coordinator
+  Центральный управляющий контур, который принимает orchestration decisions, делегирует работу и собирает итоговый результат.
+- subagent
+  Изолированный исполнитель с ограниченным scope, которому coordinator передает конкретную подзадачу.
+- tool
+  Формализованный capability endpoint с явным входным и выходным контрактом.
+- tool gateway
+  Единый слой, через который проходят tool registration, routing, validation, policy checks и normalization.
+- contract
+  Явное описание ожидаемых входов, выходов, допустимых состояний и ошибок.
+- artifact
+  Любой typed output, produced outside plain narrative text: finding, attachment, manifest, trace, stored result и similar objects.
+- finding
+  Структурированное утверждение или вывод, который система считает значимым результатом анализа.
+- provenance
+  Связь между утверждением и источником, объясняющая, откуда взят факт и на чем он основан.
+- coverage gap
+  Явно зафиксированная область, где система не получила достаточного покрытия, уверенности или верификации. В тексте ниже также может называться `пробел покрытия`.
+- manifest / state manifest
+  Структурированное описание текущего состояния процесса, его фазы, артефактов и следующих шагов. Если не сказано иное, далее manifest подразумевает state manifest.
+- scratchpad
+  Внешний рабочий артефакт для промежуточных заметок, гипотез, evidence map и phase-level thinking.
+- transcript
+  Последовательность conversational events, которая сохраняет lineage взаимодействия между сторонами и системой.
+- history
+  В этом документе history используется только для локального рабочего контекста; persistent lineage далее называется transcript.
+- derived context
+  Контекст, который пересобирается для конкретного turn и не обязан быть частью persistent transcript.
+- policy
+  Набор обязательных ограничений и правил, которые runtime должен enforce независимо от prompt wording.
+- validation
+  Проверка формы, допустимости или смысла данных до, во время или после выполнения.
+- observability
+  Совокупность traces, metrics, logs и audit artifacts, позволяющих понять, что система сделала и почему.
+- telemetry
+  Подмножество observability signals, используемое для measurement, quality tracking и operational analytics.
+- audit
+  Traceability perspective на observability, ориентированная на reconstructability, provenance и объяснимость решений.
+- human-in-the-loop
+  Режим, в котором система передает часть решения, подтверждения или разбора человеку при недостаточной надежности автоматизации.
+
+## 2.2 Non-Goals
+
+Этот документ не пытается:
+
+- зафиксировать конкретный технологический стек
+- описать UI/UX конкретного продукта
+- выбрать конкретные модели, базы данных или transport protocols
+- заменить implementation architecture, runbook или API specification
+- доказать, что одна deployment model универсально лучше другой
+
+Его задача — задать устойчивые архитектурные границы и контракты, которые остаются полезными при смене реализации.
+
 ## 3. Core Principles
 
 ### 3.1 Vendor Neutrality
@@ -53,6 +108,36 @@
 - Автоматизация допускается только после сегментированной валидации и калибровки confidence.
 - Сомнительные и конфликтные кейсы маршрутизируются на дополнительную проверку.
 - Система обязана уметь явно говорить о пробелах покрытия, а не создавать ложную определенность.
+
+## 3.6 Cross-Layer Mapping
+
+Для любого технического аспекта в этом документе рекомендуется использовать одну и ту же объяснительную рамку.
+
+Use this explanation format for every technical topic:
+
+1. Idea level
+   Какую проблему решает данный механизм и зачем он вообще существует.
+2. Language/API level
+   Что именно проектировщик или инженер объявляет, вызывает или конфигурирует.
+3. Planner/runtime level
+   Как orchestration layer принимает решение и как выполнение реально запускается.
+4. Storage/data-structure level
+   В каком виде представлены state, contracts, artifacts и execution metadata.
+5. OS/hardware level
+   Что происходит на уровне CPU, memory, network, disk, processes, queues или timers.
+6. Complexity/perf level
+   Какова asymptotic complexity, где реальные bottlenecks и что ограничивает масштабирование.
+7. One-liner
+   Одно предложение, которое фиксирует суть механизма без деталей.
+
+Этот формат нужен, чтобы:
+
+- не смешивать intent, API, runtime и storage в одно описание
+- легче сравнивать разные архитектурные решения между собой
+- быстрее находить слой, на котором именно возникает проблема
+- удерживать документ одновременно полезным для design, implementation и review
+
+Последующие секции не обязаны явно расписывать все семь уровней каждый раз, но должны оставаться совместимыми с этой линзой.
 
 ## 4. High-Level Architecture
 
@@ -104,7 +189,7 @@ Stores:
 - state manifests
 - final artifacts
 
-Состояние хранится вне conversational history, потому что история может быть сокращена, пересобрана или переинициализирована.
+Состояние хранится вне transcript, потому что transcript может быть сокращен, пересобран или переинициализирован.
 
 ## 5.3 Coordinator Layer
 
@@ -159,6 +244,8 @@ Responsibilities:
 
 Tool gateway отделяет агентную логику от конкретного транспорта и реализации инструмента.
 
+В этом документе исходный tool layer operationally выражается через tool gateway.
+
 ## 5.6 Validation and Policy Layer
 
 Этот слой отвечает за deterministic enforcement.
@@ -169,7 +256,7 @@ Includes:
 - schema validation
 - semantic validation
 - policy checks
-- guardrails
+- policy constraints
 - escalation rules
 - confidence routing rules
 
@@ -206,6 +293,20 @@ Captures:
 - confidence values
 - human review outcomes
 
+## 5.9 Async Task and Notification Layer
+
+Во многих системах часть работы выполняется не inline, а как фоновые или длительные задачи.
+
+Этот слой отвечает за:
+
+- регистрацию async tasks
+- маршрутизацию task lifecycle events
+- доставку completion/failure notifications обратно в основной контур
+- поддержку pause/resume/stop semantics
+- отделение orchestration control flow от transport-specific delivery mechanics
+
+Если subagents, background jobs или long-running checks существуют как отдельные runtime entities, их сигналы должны нормализоваться в единый task-notification contract, а не обрабатываться ad hoc.
+
 ## 6. Canonical Processing Flow
 
 ## 6.1 Request Lifecycle
@@ -234,7 +335,7 @@ Canonical loop:
    - вызвать tool
    - делегировать задачу subagent
 3. runtime исполняет выбранное действие
-4. результат действия возвращается в history/state
+4. результат действия возвращается в transcript and/or state
 5. цикл повторяется до явного завершения
 
 Технический runtime может использовать разные сигналы остановки, но архитектурно цикл должен опираться на явный machine-readable stop state.
@@ -254,6 +355,32 @@ Adaptive decomposition:
 - подходит для исследовательских задач
 - coordinator меняет план по ходу выполнения
 - требует сильнее выраженных state, tracing и coverage controls
+
+## 6.4 Control Plane vs Data Plane
+
+В агентной системе полезно явно разделять:
+
+- control plane
+- data plane
+
+Control plane отвечает за:
+
+- планирование
+- декомпозицию
+- запуск/остановку subagents
+- очереди задач
+- маршрутизацию уведомлений
+- policy escalation
+
+Data plane отвечает за:
+
+- непосредственное выполнение tool calls
+- retrieval
+- трансформацию данных
+- валидацию результатов
+- рендеринг и сохранение артефактов
+
+Если эти роли смешаны, система становится труднее для отладки, а orchestration policies начинают зависеть от деталей конкретного execution runtime.
 
 ## 7. Component Contracts
 
@@ -331,6 +458,27 @@ Subagent должен возвращать:
 - `used_sources`
 - `recommended_next_actions`
 
+## 7.6 Correlation and Identity Contract
+
+Для сквозной трассировки системе нужен единый identity model across layers.
+
+Recommended identifiers:
+
+- `request_id`
+- `session_id`
+- `trace_id`
+- `task_id`
+- `tool_use_id`
+- `artifact_id`
+- `finding_id`
+
+Rules:
+
+- identifiers должны быть достаточно стабильными для correlation
+- разные типы сущностей не должны смешивать namespace
+- downstream artifacts должны уметь ссылаться на upstream execution context
+- logs, metrics, traces и persisted artifacts должны связываться через shared identifiers
+
 ## 8. Orchestration Model
 
 ## 8.1 Coordinator Responsibilities
@@ -371,6 +519,23 @@ Good candidates:
 - per-file passes
 
 Не стоит параллелить шаги, где следующая задача зависит от результата предыдущей.
+
+## 8.4 Cancellation and Preemption
+
+Orchestration model должен явно определять, как система:
+
+- отменяет in-flight work
+- останавливает устаревшие branches of execution
+- обрабатывает user interruption
+- различает cancel, reject и failure
+
+Без этого:
+
+- partial work теряется неявно
+- observability искажается
+- retry logic начинает опираться на догадки
+
+Cancellation semantics должны быть explicit как для tool execution, так и для delegated tasks.
 
 ## 9. Tooling Architecture
 
@@ -446,6 +611,50 @@ Adapter responsibilities:
 
 Архитектура должна поддерживать как готовые интеграции, так и кастомные адаптеры без изменения coordinator logic.
 
+## 9.6 Tool Exposure and Inventory Shaping
+
+Tooling architecture должна различать:
+
+- полный каталог доступных tools
+- runtime-available tools
+- prompt-visible tools
+- role-scoped tools
+
+Нельзя предполагать, что все физически установленные инструменты всегда:
+
+- доступны в текущем окружении
+- выданы текущему агенту
+- показаны модели в prompt
+
+На состав tool inventory могут влиять:
+
+- feature flags
+- execution mode
+- permission mode
+- connected integrations
+- role policy
+- environment capabilities
+
+Поэтому набор tools должен формироваться отдельным deterministic layer до execution phase.
+
+## 9.7 Tool Execution Ordering
+
+Tool execution layer должен иметь явную стратегию порядка выполнения.
+
+Минимум нужно различать:
+
+- serial execution
+- bounded parallel execution
+- isolated exclusive execution
+
+Parallel execution допустим только там, где:
+
+- операции независимы
+- нет shared mutable state conflict
+- side effects являются безопасными
+
+Высокорисковые или stateful tools должны уметь требовать exclusive execution even if the surrounding runtime generally supports concurrency.
+
 ## 10. Prompt and Output Architecture
 
 ## 10.1 Prompt Stack
@@ -492,11 +701,33 @@ Retry применим только к исправимым ошибкам:
 
 Retry бесполезен, если нужной информации нет в исходном материале.
 
+## 10.5 Context Artifact Bus
+
+Помимо transcript, системе обычно нужен отдельный канал для передачи structured artifacts в основной цикл.
+
+Examples:
+
+- diagnostics
+- file references
+- search summaries
+- task notifications
+- policy decisions
+- memory recalls
+- budget or token signals
+
+Attachments, manifests, traces, stored results и similar typed objects можно считать разными видами artifacts. Архитектурно важно одно:
+
+- такие artifacts не должны теряться внутри обычного текста
+- они должны иметь machine-readable typing
+- их жизненный цикл может отличаться от жизненного цикла chat messages
+
+Это особенно важно для resume, audit и downstream automation.
+
 ## 11. Context Management Architecture
 
 ## 11.1 Persistent Facts Block
 
-Все критические факты должны жить в отдельном structured block, а не только в summarized history.
+Все критические факты должны жить в отдельном structured block, а не только в summarized transcript.
 
 Examples:
 
@@ -538,7 +769,7 @@ They store:
 
 ## 11.5 State Manifest
 
-Для возобновления долгих процессов нужен manifest.
+Для возобновления долгих процессов нужен state manifest.
 
 Recommended contents:
 
@@ -548,6 +779,80 @@ Recommended contents:
 - artifacts produced
 - known blockers
 - next recommended action
+
+Если не сказано иное, далее manifest в этом документе подразумевает именно state manifest.
+
+## 11.6 State Classes and Persistence Boundaries
+
+В зрелой agentic architecture обычно существует несколько разных классов состояния.
+
+Typical classes:
+
+- transcript state
+- runtime state
+- persistent memory
+- sidecar metadata
+- derived context artifacts
+
+Они не должны смешиваться.
+
+Examples:
+
+- transcript state хранит разговор и machine-visible events
+- runtime state хранит текущие соединения, UI/session flags и execution cursors
+- persistent memory хранит cross-session knowledge
+- sidecar metadata хранит служебные индексы, snapshots и restore hints
+- derived context artifacts пересобираются из других источников по мере необходимости
+
+Для каждого класса состояния должны быть отдельно определены:
+
+- owner
+- retention policy
+- serialization format
+- replay semantics
+- mutation policy
+
+## 11.7 Transcript vs Derived Context
+
+Не весь контекст должен жить в transcript.
+
+Нужно различать:
+
+- what is persisted as conversational lineage
+- what is derived for a particular turn
+- what is injected temporarily as auxiliary context
+
+Derived context may include:
+
+- retrieved snippets
+- diagnostics
+- memory recalls
+- policy summaries
+- task status signals
+
+Если derived context без разбора сериализуется как transcript, resume становится шумным, lineage теряет смысл, а compaction начинает искажать истинную историю принятия решений.
+
+## 11.8 Context Reduction Pipeline
+
+Для длинных сессий нужна не одна техника сокращения контекста, а pipeline.
+
+Possible stages:
+
+- result budgeting
+- selective truncation
+- history summarization
+- artifact projection
+- state manifest refresh
+- reactive compaction after model errors
+
+Важно, чтобы pipeline был:
+
+- ordered
+- observable
+- reversible where possible
+- safe for critical facts
+
+Одна универсальная compaction strategy обычно недостаточна для всех failure modes.
 
 ## 12. Reliability and Error Handling
 
@@ -605,6 +910,49 @@ Use cases:
 - `resume` when state still valid
 - `fork` when comparing alternatives
 - `fresh start` when prior context/tool outputs stale
+
+## 12.6 Background and Detached Execution
+
+Некоторые workflows нужно уметь продолжать вне активного interactive turn.
+
+Examples:
+
+- long-running verification
+- background retrieval
+- delegated implementation
+- scheduled maintenance tasks
+
+Для этого архитектура должна поддерживать:
+
+- detached task lifecycle
+- completion callbacks or notifications
+- explicit cancellation
+- result handoff back into the main session
+
+Background execution не должно создавать отдельную неуправляемую систему поверх основного orchestration model.
+
+## 12.7 Chain Integrity and Ephemeral Events
+
+Нужно явно различать:
+
+- lineage-bearing events
+- ephemeral operational events
+
+Examples of ephemeral events:
+
+- live progress ticks
+- transient UI updates
+- intermediate streaming markers
+
+Эти события полезны для UX, но они не должны автоматически попадать в persistent conversational lineage.
+
+Иначе:
+
+- parent-child chains ломаются
+- resume становится нестабильным
+- audit trail загрязняется шумом
+
+Правила включения событий в persistent history должны быть explicit и centralized.
 
 ## 13. Human-in-the-Loop
 
@@ -664,6 +1012,29 @@ Must capture:
 - calibrated thresholds
 - stratified sampling of high-confidence cases
 
+## 14.4 Observability by Artifact Type
+
+Этот раздел уточняет observability layer, разделяя signal classes для operational analysis.
+
+Observability должна различать разные типы артефактов, а не только события одного класса.
+
+Useful categories:
+
+- conversational transcript
+- tool execution records
+- subagent/task lifecycle records
+- policy decision records
+- persisted artifacts
+- human review decisions
+
+Это позволяет отвечать на разные вопросы:
+
+- что было сказано
+- что было сделано
+- почему действие было разрешено или запрещено
+- какие артефакты были созданы
+- где именно произошел сбой
+
 ## 15. Security and Configuration Principles
 
 ## 15.1 Secret Handling
@@ -681,6 +1052,24 @@ Must capture:
 - runtime environment configuration
 
 Архитектурные контракты должны быть общими, а credentials и environment-specific values изолированными.
+
+## 15.3 Retention and Deletion Boundaries
+
+Архитектура должна заранее различать:
+
+- transient execution state
+- short-lived operational logs
+- durable business artifacts
+- long-lived memory or audit records
+
+Для каждого класса данных желательно определить:
+
+- retention policy
+- deletion policy
+- redaction policy
+- restore expectations
+
+Без этого state model со временем разрастается, а требования privacy, audit и cost control начинают конфликтовать друг с другом.
 
 ## 16. Deployment-Neutral Runtime View
 
@@ -729,6 +1118,20 @@ Vendor-neutral разбиение может выглядеть так:
 - maintainable prompt contracts
 - explicit uncertainty handling
 
+## 18.1 Architectural Tensions to Manage
+
+Даже хорошая agentic architecture обычно испытывает несколько постоянных напряжений.
+
+Common tensions:
+
+- central coordinator simplicity vs modular execution layers
+- rich observability vs low overhead
+- broad context access vs strict isolation
+- flexible adaptation vs deterministic control flow
+- durable persistence vs minimal retained state
+
+Эти tradeoffs должны быть признаны явно. Их нельзя полностью устранить, но ими можно управлять через clear boundaries and contracts.
+
 ## 19. Anti-Patterns to Avoid
 
 - vendor-specific logic in core architecture
@@ -757,4 +1160,202 @@ Vendor-neutral разбиение может выглядеть так:
 
 ## 21. Next Step
 
-Этот документ является generic baseline. Следующий слой проектирования должен быть отдельным документом implementation architecture, где generic-модель будет привязана к конкретному стеку, runtime, API-провайдеру, каналам доставки, инфраструктуре и deployment strategy.
+Этот документ является generic baseline. Следующим слоем должен быть отдельный implementation architecture document, который использует те же термины и слои, но отображает их на конкретный стек, interfaces, lifecycle и deployment model.
+
+## 22. Transition Rules
+
+Generic architecture document не должен подменять собой implementation design, но он должен делать переход к нему безопасным.
+
+Следующий уровень документации должен:
+
+- сохранять те же логические слои
+- не ломать терминологию baseline-документа
+- явно показывать ownership boundaries
+- переводить abstract contracts в concrete interfaces
+- фиксировать lifecycle и recovery semantics
+
+Важно, чтобы implementation architecture оставался downstream-документом по отношению к generic baseline, а не переписывал его заново своими терминами.
+
+## 23. Generic Runtime Reading Guide
+
+Если читать зрелую agentic system сверху вниз, обычно полезно идти в таком порядке:
+
+1. entry and interaction contract
+2. session and state ownership
+3. orchestration loop
+4. tool gateway and policy enforcement
+5. rendering and artifact projection
+6. observability and audit
+
+Такой порядок помогает не путать:
+
+- control decisions
+- execution details
+- persistence rules
+- presentation logic
+
+## 24. Generic Layer Mapping Questions
+
+При переходе от baseline к implementation architecture для каждого слоя полезно ответить на один и тот же набор вопросов.
+
+### 24.1 Interaction Layer Questions
+
+- где запрос впервые нормализуется
+- где присваиваются identifiers
+- где завершается channel-specific logic
+- где начинается agentic control flow
+
+### 24.2 Session and State Layer Questions
+
+- какие классы state существуют
+- что хранится persistently
+- что живет только в памяти процесса
+- какие данные участвуют в resume
+- какие данные можно безопасно пересобрать
+
+### 24.3 Orchestration Layer Questions
+
+- где живет canonical loop
+- где принимается решение continue/stop
+- где выбираются tools и subagents
+- где проходит fan-out/fan-in
+- где фиксируются coverage gaps
+
+### 24.4 Tool Gateway Questions
+
+- где находится единая точка tool execution
+- где происходит input validation
+- где разрешаются permissions
+- где срабатывают hooks
+- где нормализуются outcomes
+
+### 24.5 Rendering Questions
+
+- что является model-facing output
+- что является user-facing rendering
+- какие artifacts существуют отдельно от plain text
+- какие события невидимы пользователю, но значимы для state
+
+### 24.6 Observability Questions
+
+- какие сигналы считаются audit trail
+- какие сигналы считаются product telemetry
+- какие сигналы считаются debug-only
+- как связываются request, tool, subagent и final result
+
+## 25. Reliability Patterns Worth Preserving
+
+При конкретной реализации желательно не потерять несколько важных reliability patterns:
+
+- distinction between validation failure and execution failure
+- distinction between permission denial and business error
+- distinction between empty result and failed result
+- explicit handling of partial success
+- resumable long-running work
+- context reduction without loss of critical facts
+- explicit recovery after model-side or transport-side failures
+
+Эти свойства должны оставаться видимыми в implementation architecture как first-class contracts, а не как набор случайных специальных кейсов.
+
+## 26. Common Gaps Between Baseline and Real Systems
+
+При переходе от generic architecture к реальной системе чаще всего появляются следующие зазоры.
+
+### 26.1 Distributed Orchestration Semantics
+
+Оркестрационная логика начинает жить сразу в нескольких местах:
+
+- loop control
+- task management
+- tool runtime
+- recovery paths
+- mode-specific policy
+
+Если это не документировать явно, становится трудно понять, где находится истинный orchestration contract.
+
+### 26.2 Implicit Outcome Models
+
+Во многих системах итог выполнения выражается одновременно через:
+
+- result payload
+- side-channel artifacts
+- telemetry signals
+- stored artifacts
+- hook side effects
+
+Если не свести это в единый outcome model, поведение системы становится труднее верифицировать.
+
+### 26.3 Fragmented Error Taxonomy
+
+Даже когда runtime различает несколько типов ошибок на практике, documented taxonomy часто отстает.
+
+В результате:
+
+- recovery rules становятся неявными
+- observability теряет консистентность
+- coordinator хуже понимает, что именно можно retry
+
+### 26.4 Hidden State Manifests
+
+Во многих системах manifest semantics уже существуют по факту, но не оформлены как явный объект или контракт.
+
+Это приводит к тому, что:
+
+- resume работает, но объяснить его трудно
+- persistence boundaries неочевидны
+- migration and recovery logic становится хрупкой
+
+### 26.5 Multi-Channel Observability Without Clear Separation
+
+Когда в системе одновременно есть telemetry, tracing, audit logs, debug signals и user-visible status events, без явного разделения каналов они начинают смешиваться.
+
+Это затрудняет:
+
+- root cause analysis
+- compliance review
+- performance debugging
+- user-facing explanations
+
+## 27. Minimum Contents Of The Implementation Document
+
+Следующий документ, который строится поверх generic baseline, должен добавлять не новую философию, а concrete answers на уже заданные вопросы.
+
+Useful sections:
+
+- ownership map
+- request and turn state machine
+- tool outcome model
+- error taxonomy and retry policy
+- persistence and resume contract
+- hook lifecycle contract
+- task and notification lifecycle
+- observability matrix by signal type
+
+## 28. Documentation Boundary
+
+Generic architecture document должен:
+
+- задавать invariant layers and contracts
+- описывать universal patterns
+- не зависеть от конкретных файлов, классов и модулей
+- не спорить с будущей implementation architecture
+
+Implementation architecture document должен:
+
+- использовать термины generic baseline
+- отображать их на конкретные boundaries
+- фиксировать реальные lifecycle details
+- объяснять текущие tradeoffs и ограничения
+
+Смешивать эти два уровня в одном документе не стоит.
+
+## 29. Final Baseline Principle
+
+Хороший generic architecture document нужен для того, чтобы:
+
+- удерживать систему в понятных boundaries
+- облегчать замену технологий
+- уменьшать coupling между orchestration, tools, state и UI
+- давать устойчивую основу для implementation-specific design
+
+Если документ нельзя перенести на другой стек без потери смысла, значит он перестал быть generic.
